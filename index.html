@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prompt MRI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Bebas+Neue&family=IBM+Plex+Sans:wght@300;400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    /* =====================================================
+       DESIGN: hackathon brutalism
+       fluorescent lime on black, big dumb type, tape energy
+       looks like it was built at 3am and it was
+    ===================================================== */
+
+    :root {
+      --black: #080808;
+      --white: #f0f0e8;
+      --lime: #c8ff00;
+      --red: #ff3131;
+      --orange: #ff7a00;
+      --muted: #505050;
+      --card: #0d0d0d;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    ::selection {
+      background: var(--lime);
+      color: var(--black);
+    }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-weight: 300;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* grain overlay — gives it that printed-on-newsprint feel */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ─────────── HEADER ─────────── */
+    header {
+      padding: 32px 32px 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .header-left {
+      flex: 1;
+      min-width: 260px;
+    }
+
+    /* oversized title — the whole visual point */
+    .title-block {
+      line-height: 0.86;
+      margin-bottom: 16px;
+    }
+
+    .t1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(80px, 16vw, 172px);
+      color: var(--white);
+      display: block;
+      letter-spacing: 0.02em;
+    }
+
+    .t2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(80px, 16vw, 172px);
+      color: var(--lime);
+      display: block;
+      letter-spacing: 0.02em;
+      /* slight indent — two words felt too aligned */
+      padding-left: 4px;
+    }
+
+    .tagline {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      border-left: 2px solid var(--lime);
+      padding-left: 10px;
+      line-height: 1.8;
+      text-transform: uppercase;
+    }
+
+    /* rotated sticker — the hackathon credibility badge */
+    .sticker {
+      display: inline-block;
+      margin-top: 20px;
+      background: var(--lime);
+      color: var(--black);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 6px 12px;
+      transform: rotate(-2deg);
+      box-shadow: 3px 3px 0 rgba(200, 255, 0, 0.25);
+    }
+
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      padding-top: 12px;
+    }
+
+    .not-optimizer {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--red);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border: 1px solid var(--red);
+      padding: 5px 10px;
+    }
+
+    .ver {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      color: #282828;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ─────────── MAIN ─────────── */
+    main {
+      padding: 44px 32px 80px;
+      max-width: 960px;
+    }
+
+    /* tape label — sticks on sections */
+    .tape {
+      display: inline-block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      background: var(--white);
+      color: var(--black);
+      padding: 3px 9px;
+      margin-bottom: 10px;
+    }
+
+    /* ─────────── PROMPT TEXTAREA ─────────── */
+    .prompt-block {
+      margin-bottom: 20px;
+    }
+
+    .prompt-box {
+      position: relative;
+    }
+
+    /* the "tab" label stuck on top */
+    .prompt-box::before {
+      content: 'patient prompt';
+      position: absolute;
+      top: 0;
+      left: 0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      background: var(--lime);
+      color: var(--black);
+      padding: 3px 10px;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    textarea#prompt-input {
+      width: 100%;
+      min-height: 180px;
+      padding: 32px 16px 16px;
+      background: var(--card);
+      border: 1px solid #1c1c1c;
+      border-top: 3px solid var(--lime);
+      color: var(--white);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 300;
+      line-height: 1.7;
+      resize: vertical;
+      outline: none;
+    }
+
+    textarea#prompt-input::placeholder {
+      color: #2c2c2c;
+    }
+
+    textarea#prompt-input:focus {
+      border-color: #2a2a2a;
+      border-top-color: var(--lime);
+    }
+
+    .row-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+
+    #char-count {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+
+    /* ─────────── BUTTON ─────────── */
+    #analyze-btn {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 0.12em;
+      padding: 10px 32px;
+      background: var(--lime);
+      color: var(--black);
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.07s;
+      box-shadow: 4px 4px 0 #c8ff0033;
+    }
+
+    #analyze-btn:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 6px 6px 0 #c8ff0033;
+    }
+
+    #analyze-btn:active {
+      transform: translate(1px, 1px);
+      box-shadow: 2px 2px 0 #c8ff0033;
+    }
+
+    #analyze-btn:disabled {
+      background: #181818;
+      color: #2a2a2a;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ─────────── ERROR ─────────── */
+    #error-msg {
+      display: none;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--red);
+      background: #110404;
+      border-left: 4px solid var(--red);
+      padding: 12px 14px;
+      margin-bottom: 20px;
+      letter-spacing: 0.04em;
+    }
+
+    /* ─────────── LOADING ─────────── */
+    #loading {
+      display: none;
+      padding: 40px 0 24px;
+    }
+
+    .load-text {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--lime);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .load-text::after {
+      content: '';
+      animation: ellipsis 1.4s steps(4, end) infinite;
+    }
+
+    @keyframes ellipsis {
+      0% {
+        content: '';
+      }
+
+      25% {
+        content: '.';
+      }
+
+      50% {
+        content: '..';
+      }
+
+      75% {
+        content: '...';
+      }
+    }
+
+    .progress-track {
+      width: 100%;
+      max-width: 360px;
+      height: 2px;
+      background: #141414;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 40%;
+      background: var(--lime);
+      animation: sweep 1.5s ease-in-out infinite;
+    }
+
+    @keyframes sweep {
+      0% {
+        transform: translateX(-120%);
+      }
+
+      100% {
+        transform: translateX(380%);
+      }
+    }
+
+    /* ─────────── RESULTS ─────────── */
+    #results {
+      display: none;
+      margin-top: 48px;
+      animation: rise 0.3s ease;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* section separator label */
+    .results-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 13px;
+      letter-spacing: 0.22em;
+      color: var(--muted);
+      border-bottom: 1px solid #141414;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+
+    /* ─────────── SCORE + HEALTH BANNER ─────────── */
+    .health-wrap {
+      display: flex;
+      border: 1px solid #1e1e1e;
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+
+    /* NEW: circular score block sits left of health word */
+    .score-donut-col {
+      padding: 24px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-right: 1px solid #1a1a1a;
+      min-width: 140px;
+    }
+
+    .score-donut-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* SVG donut sits inline, sized by viewBox */
+    .donut-svg {
+      display: block;
+    }
+
+    .donut-track {
+      fill: none;
+      stroke: #1a1a1a;
+    }
+
+    .donut-fill {
+      fill: none;
+      stroke-linecap: butt;
+      transition: stroke-dashoffset 0.9s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s;
+    }
+
+    .donut-number {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      fill: var(--white);
+      dominant-baseline: central;
+      text-anchor: middle;
+    }
+
+    .health-score-col {
+      padding: 24px 24px;
+      border-right: 1px solid #1a1a1a;
+      min-width: 160px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .h-tiny {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .h-word {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 58px;
+      line-height: 1;
+      letter-spacing: 0.03em;
+    }
+
+    .health-detail-col {
+      flex: 1;
+      padding: 24px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .h-rationale {
+      font-size: 14px;
+      color: #999;
+      line-height: 1.6;
+    }
+
+    /* ─────────── META GRID ─────────── */
+    .meta-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .mcard {
+      background: var(--card);
+      border: 1px solid #1a1a1a;
+      padding: 14px 16px;
+    }
+
+    .mcard-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .mcard-value {
+      font-size: 13px;
+      color: var(--white);
+      line-height: 1.5;
+    }
+
+    .mcard-value.arch {
+      font-family: 'IBM Plex Mono', monospace;
+      color: var(--lime);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* ─────────── FINDINGS GRID ─────────── */
+    .findings-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .fcard {
+      background: var(--card);
+      border: 1px solid #1a1a1a;
+    }
+
+    .fcard-head {
+      padding: 9px 13px;
+      border-bottom: 1px solid #161616;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .fcard-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .fcard-stripe {
+      display: inline-block;
+      width: 10px;
+      height: 3px;
+    }
+
+    .fcount {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--muted);
+      background: #141414;
+      padding: 1px 6px;
+    }
+
+    .fitem {
+      padding: 10px 13px;
+      border-bottom: 1px solid #111;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .fitem:last-child {
+      border-bottom: none;
+    }
+
+    .ftext {
+      flex: 1;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #c0c0c0;
+    }
+
+    .ctag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 7px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 2px 5px;
+      border: 1px solid currentColor;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .ctag.high {
+      color: #ff4444;
+    }
+
+    .ctag.medium {
+      color: #ff9900;
+    }
+
+    .ctag.speculative {
+      color: #333;
+    }
+
+    /* confidence as 0-100 number (new schema uses numbers) */
+    .ctag.conf-hi {
+      color: #ff4444;
+    }
+
+    .ctag.conf-mid {
+      color: #ff9900;
+    }
+
+    .ctag.conf-lo {
+      color: #333;
+    }
+
+    .fempty {
+      padding: 14px 13px;
+      font-size: 11px;
+      color: #252525;
+      font-style: italic;
+    }
+
+    /* ─────────── SUGGESTIONS ─────────── */
+    .sblock {
+      background: var(--card);
+      border: 1px solid #1a1a1a;
+      border-top: 3px solid var(--lime);
+      margin-bottom: 10px;
+    }
+
+    .sblock-head {
+      padding: 12px 16px;
+      border-bottom: 1px solid #161616;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sblock-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--lime);
+    }
+
+    .sitem {
+      padding: 14px 16px;
+      border-bottom: 1px solid #111;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .sitem:last-child {
+      border-bottom: none;
+    }
+
+    .spri {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 7px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .spri.high {
+      background: var(--lime);
+      color: var(--black);
+    }
+
+    .spri.medium {
+      background: var(--orange);
+      color: var(--black);
+    }
+
+    .spri.low {
+      background: #181818;
+      color: var(--muted);
+      border: 1px solid #222;
+    }
+
+    .stext {
+      font-size: 13px;
+      color: var(--white);
+      line-height: 1.5;
+      margin-bottom: 3px;
+    }
+
+    .srationale {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* ─────────── DISCLAIMER ─────────── */
+    .disclaimer {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      color: #242424;
+      border: 1px dashed #1a1a1a;
+      padding: 11px 13px;
+      line-height: 1.8;
+      letter-spacing: 0.04em;
+      margin-top: 10px;
+    }
+
+    .disclaimer b {
+      color: #363636;
+    }
+
+    /* ─────────── STEP 3 — MODEL UNDERSTANDING ─────────── */
+    /* Uses existing card/tape styles — minimal new CSS */
+    #step-confirm {
+      display: none;
+      margin-top: 32px;
+      animation: rise 0.3s ease;
+    }
+
+    .understanding-box {
+      background: var(--card);
+      border: 1px solid #1e1e1e;
+      border-left: 3px solid var(--lime);
+      padding: 18px 20px;
+      margin-bottom: 20px;
+    }
+
+    .understanding-text {
+      font-size: 15px;
+      color: var(--white);
+      line-height: 1.7;
+      font-style: italic;
+    }
+
+    .confirm-question {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .confirm-btns {
+      display: flex;
+      gap: 12px;
+    }
+
+    /* YES / NO use existing button shape, different colors */
+    .btn-yes,
+    .btn-no {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      letter-spacing: 0.12em;
+      padding: 8px 28px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.07s;
+    }
+
+    .btn-yes {
+      background: var(--lime);
+      color: var(--black);
+      box-shadow: 3px 3px 0 #c8ff0033;
+    }
+
+    .btn-yes:hover {
+      transform: translate(-1px, -1px);
+    }
+
+    .btn-no {
+      background: #1a1a1a;
+      color: var(--white);
+      border: 1px solid #2e2e2e;
+    }
+
+    .btn-no:hover {
+      background: #222;
+    }
+
+    /* ─────────── STEP 4 — CLARIFICATION ─────────── */
+    #step-clarify {
+      display: none;
+      margin-top: 32px;
+      animation: rise 0.3s ease;
+    }
+
+    .clarify-box {
+      position: relative;
+    }
+
+    .clarify-box::before {
+      content: 'your clarification';
+      position: absolute;
+      top: 0;
+      left: 0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      background: var(--orange);
+      color: var(--black);
+      padding: 3px 10px;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    textarea#clarify-input {
+      width: 100%;
+      min-height: 100px;
+      padding: 32px 16px 16px;
+      background: var(--card);
+      border: 1px solid #1c1c1c;
+      border-top: 3px solid var(--orange);
+      color: var(--white);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 300;
+      line-height: 1.7;
+      resize: vertical;
+      outline: none;
+    }
+
+    textarea#clarify-input::placeholder {
+      color: #2c2c2c;
+    }
+
+    textarea#clarify-input:focus {
+      border-color: #2a2a2a;
+      border-top-color: var(--orange);
+    }
+
+    #re-scan-btn {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      letter-spacing: 0.12em;
+      padding: 8px 28px;
+      background: var(--orange);
+      color: var(--black);
+      border: none;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: transform 0.07s;
+      box-shadow: 3px 3px 0 #ff7a0033;
+    }
+
+    #re-scan-btn:hover {
+      transform: translate(-1px, -1px);
+    }
+
+    #re-scan-btn:disabled {
+      background: #181818;
+      color: #2a2a2a;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ─────────── STEP 5 — FINAL OPTIONS ─────────── */
+    #step-final {
+      display: none;
+      margin-top: 32px;
+      animation: rise 0.3s ease;
+    }
+
+    .final-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .final-opt-btn {
+      background: var(--card);
+      border: 1px solid #2a2a2a;
+      color: var(--white);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 20px 18px;
+      cursor: pointer;
+      text-align: left;
+      line-height: 1.5;
+      transition: border-color 0.15s, transform 0.07s;
+    }
+
+    .final-opt-btn span {
+      display: block;
+      font-size: 9px;
+      font-weight: 400;
+      color: var(--muted);
+      margin-top: 4px;
+      text-transform: none;
+      letter-spacing: 0.04em;
+    }
+
+    .final-opt-btn:hover {
+      border-color: var(--lime);
+      transform: translate(-1px, -1px);
+    }
+
+    .final-opt-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* final prompt output */
+    #final-output {
+      display: none;
+    }
+
+    .final-prompt-box {
+      background: var(--card);
+      border: 1px solid #1e1e1e;
+      border-top: 3px solid var(--lime);
+      padding: 20px 18px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--white);
+      line-height: 1.8;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* ─────────── FOOTER ─────────── */
+    footer {
+      border-top: 1px solid #111;
+      margin-top: 60px;
+      padding: 18px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    footer span {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      color: #1e1e1e;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ─────────── RESPONSIVE ─────────── */
+    @media (max-width: 620px) {
+
+      header,
+      main,
+      footer {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      .meta-2col,
+      .findings-2col,
+      .final-options {
+        grid-template-columns: 1fr;
+      }
+
+      .health-wrap {
+        flex-direction: column;
+      }
+
+      .health-score-col {
+        border-right: none;
+        border-bottom: 1px solid #1a1a1a;
+      }
+
+      .score-donut-col {
+        border-right: none;
+        border-bottom: 1px solid #1a1a1a;
+      }
+    }
+
+    .mode-toggle {
+      display: flex;
+      padding: 24px 32px 0;
+      gap: 0;
+      max-width: 960px;
+    }
+
+    .toggle-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 10px 24px;
+      background: var(--card);
+      color: var(--muted);
+      border: 1px solid #1e1e1e;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .toggle-btn:first-child {
+      border-right: none;
+    }
+
+    .toggle-btn.active-p1 {
+      background: var(--lime);
+      color: var(--black);
+      border-color: var(--lime);
+    }
+
+    .toggle-btn.active-p2 {
+      background: var(--red);
+      color: var(--white);
+      border-color: var(--red);
+    }
+
+    .toggle-btn:not(.active-p1):not(.active-p2):hover {
+      border-color: #333;
+      color: var(--white);
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── HEADER ── -->
+  <header>
+    <div class="header-left">
+      <div class="title-block">
+        <span class="t1">PROMPT</span>
+        <span class="t2">MRI</span>
+      </div>
+      <p class="tagline">
+        not an optimizer.<br>
+        a diagnostic.<br>
+        shows you why your prompt fails.
+      </p>
+      <span class="sticker">⚡ built at a hackathon</span>
+    </div>
+
+    <div class="header-right">
+      <span class="not-optimizer">≠ not an optimizer</span>
+      <span class="ver">v0.2.0</span>
+    </div>
+  </header>
+
+  <div class="mode-toggle">
+    <button class="toggle-btn active-p1" id="toggle-p1" onclick="switchMode('p1')">
+      ⬡ Prompt MRI
+    </button>
+    <button class="toggle-btn" id="toggle-p2" onclick="switchMode('p2')">
+      ◈ Hallucination Checker
+    </button>
+  </div>
+
+  <!-- ── MAIN ── -->
+  <main id="phase1-main">
+
+    <!-- STEP 1: Prompt input -->
+    <div id="step-input">
+      <div class="prompt-block">
+        <div class="tape">01 / your prompt</div>
+        <div class="prompt-box">
+          <textarea id="prompt-input"
+            placeholder="Paste the prompt you want to diagnose. The vaguer it is, the more this is going to sting."
+            spellcheck="false"></textarea>
+        </div>
+        <div class="row-footer">
+          <span id="char-count">0 chars</span>
+          <button id="analyze-btn" onclick="runAnalysis()">SCAN PROMPT →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error (global, always visible when set) -->
+    <div id="error-msg"></div>
+
+    <!-- Loading (shared across all async steps) -->
+    <div id="loading">
+      <div class="load-text" id="load-label">scanning prompt structure</div>
+      <div class="progress-track">
+        <div class="progress-bar"></div>
+      </div>
+    </div>
+
+    <!-- STEP 2: MRI Results -->
+    <div id="results"></div>
+
+    <!-- STEP 3: Model understanding + YES/NO -->
+    <div id="step-confirm">
+      <div class="tape">03 / model understanding</div>
+      <div class="understanding-box">
+        <div class="understanding-text" id="understanding-text"></div>
+      </div>
+      <div class="confirm-question">Is this what you want the AI to do?</div>
+      <div class="confirm-btns">
+        <button class="btn-yes" onclick="onConfirmYes()">YES</button>
+        <button class="btn-no" onclick="onConfirmNo()">NO</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Clarification (shown if NO) -->
+    <div id="step-clarify">
+      <div class="tape">04 / clarify intent</div>
+      <div class="clarify-box">
+        <textarea id="clarify-input"
+          placeholder="Tell the model what it misunderstood or clarify your intent. This will be treated as authoritative."
+          spellcheck="false"></textarea>
+      </div>
+      <button id="re-scan-btn" onclick="runReScan()">RE-SCAN WITH CLARIFICATION →</button>
+    </div>
+
+    <!-- STEP 5: Final options -->
+    <div id="step-final">
+      <div class="tape">05 / finalize</div>
+      <div class="final-options">
+        <button class="final-opt-btn" onclick="runFinalize('optimize')">
+          OPTIMIZE MY PROMPT
+          <span>Rewrite for clarity, precision, and alignment.</span>
+        </button>
+        <button class="final-opt-btn" onclick="runFinalize('collaborate')">
+          GENERATE COLLABORATED PROMPT
+          <span>Combine original + clarifications into a clean final prompt.</span>
+        </button>
+      </div>
+
+      <!-- Final prompt output -->
+      <div id="final-output">
+        <div class="tape">final prompt</div>
+        <div class="final-prompt-box" id="final-prompt-text"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <span>Prompt MRI — hackathon build</span>
+    <span>diagnosis · not prescription</span>
+  </footer>
+
+  <!-- Keys loaded first. Must define window.__PROMPT_MRI_KEYS__ -->
+  <script src="keys.js"></script>
+  <script src="prompt-mri.js"></script>
+</body>
+
+</html>
