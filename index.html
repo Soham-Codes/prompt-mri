@@ -1015,6 +1015,184 @@
       border-color: #333;
       color: var(--white);
     }
+
+    .phase-divider {
+      border: none;
+      border-top: 1px solid #161616;
+      margin: 64px 0 48px;
+    }
+
+    #phase2 {
+      max-width: 960px;
+      padding: 0 32px 80px;
+    }
+
+    .tape-red {
+      display: inline-block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      background: #ff3131;
+      color: #f0f0e8;
+      padding: 3px 9px;
+      margin-bottom: 10px;
+    }
+
+    .p2-input-box {
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .p2-input-box::before {
+      content: 'ai response';
+      position: absolute;
+      top: 0;
+      left: 0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      background: #ff3131;
+      color: #f0f0e8;
+      padding: 3px 10px;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    #response-input {
+      width: 100%;
+      min-height: 200px;
+      padding: 32px 16px 16px;
+      background: #0d0d0d;
+      border: 1px solid #1c1c1c;
+      border-top: 3px solid #ff3131;
+      color: #f0f0e8;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 300;
+      line-height: 1.7;
+      resize: vertical;
+      outline: none;
+    }
+
+    #response-input::placeholder {
+      color: #2c2c2c;
+    }
+
+    #response-input:focus {
+      border-color: #2a2a2a;
+      border-top-color: #ff3131;
+    }
+
+    #p2-analyze-btn {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 0.12em;
+      padding: 10px 32px;
+      background: #ff3131;
+      color: #f0f0e8;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.07s;
+      box-shadow: 4px 4px 0 #ff313133;
+    }
+
+    #p2-analyze-btn:hover {
+      transform: translate(-1px, -1px);
+    }
+
+    #p2-analyze-btn:active {
+      transform: translate(1px, 1px);
+    }
+
+    #p2-analyze-btn:disabled {
+      background: #181818;
+      color: #2a2a2a;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    #p2-loading {
+      display: none;
+      padding: 40px 0 24px;
+    }
+
+    #p2-error-msg {
+      display: none;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #ff3131;
+      background: #110404;
+      border-left: 4px solid #ff3131;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+      letter-spacing: 0.04em;
+    }
+
+    #p2-results {
+      display: none;
+      margin-top: 32px;
+      animation: rise 0.3s ease;
+    }
+
+    .risk-banner {
+      display: flex;
+      border: 1px solid #1e1e1e;
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+
+    .p2-disclaimer {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      color: #505050;
+      background: #0f0c0c;
+      border: 1px solid #2a1a1a;
+      border-left: 3px solid #ff3131;
+      padding: 11px 14px;
+      line-height: 1.8;
+      letter-spacing: 0.04em;
+      margin-bottom: 24px;
+    }
+
+    .p2-disclaimer b {
+      color: #999;
+    }
+
+    .vsug-block {
+      background: #0d0d0d;
+      border: 1px solid #1a1a1a;
+      border-top: 3px solid #ff7a00;
+      margin-bottom: 10px;
+    }
+
+    .vsug-head {
+      padding: 12px 16px;
+      border-bottom: 1px solid #161616;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .vsug-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #ff7a00;
+    }
+
+    @media (max-width: 620px) {
+      #phase2 {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+    }
   </style>
 </head>
 
@@ -1129,6 +1307,42 @@
     </div>
 
   </main>
+
+  <hr class="phase-divider">
+
+  <section id="phase2">
+
+    <div class="tape-red">phase 2 / hallucination risk analyzer</div>
+
+    <div class="p2-disclaimer">
+      <b>What this does:</b> detects structural patterns associated with hallucination risk — overconfidence,
+      unsupported specificity, fake citation formats, logical inconsistencies.<br>
+      <b>What this does NOT do:</b> verify facts, check sources, or confirm whether any claim is true or false. This is
+      a structural signal detector, not a fact-checker.
+    </div>
+
+    <div class="p2-input-box">
+      <textarea id="response-input" placeholder="Paste the AI response you want to evaluate for hallucination risk."
+        spellcheck="false"></textarea>
+    </div>
+
+    <div class="row-footer">
+      <span id="p2-char-count">0 chars</span>
+      <button id="p2-analyze-btn">ANALYZE RESPONSE →</button>
+    </div>
+
+    <div id="p2-error-msg"></div>
+
+    <div id="p2-loading">
+      <div class="load-text" id="p2-load-label">analyzing response structure</div>
+      <div class="progress-track">
+        <div class="progress-bar"></div>
+      </div>
+    </div>
+
+    <div id="p2-results"></div>
+
+  </section>
 
   <footer>
     <span>Prompt MRI — hackathon build</span>

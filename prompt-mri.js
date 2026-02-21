@@ -788,3 +788,231 @@ function switchMode(mode) {
     btnP2.className = 'toggle-btn active-p2';
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// PHASE 2 — HALLUCINATION RISK ANALYZER
+// ═══════════════════════════════════════════════════════════════════
+
+const P2_SYSTEM_PROMPT = `You are a structural hallucination risk detector for AI-generated text.
+
+CRITICAL SCOPE LIMITATION:
+You do NOT verify facts. You do NOT check whether claims are true or false.
+You ONLY detect structural and linguistic patterns statistically associated with AI confabulation.
+
+WHAT YOU DETECT:
+- Unsupported specificity: precise numbers, dates, statistics with no attribution
+- Fabricated specificity: overly precise details that feel invented
+- Fake citation patterns: references that look like citations but are structurally suspicious
+- Overconfidence markers: definitive claims with no hedging where hedging would be expected
+- Logical inconsistencies: statements that contradict each other
+
+SCORING RULES for risk_score (0-100). Start at 0. Add:
++12 per specific statistic with no source
++10 per named expert or study with no citation
++8 per definitive claim in a domain known for AI confabulation
++7 per fake-looking citation
++6 per logical inconsistency
++5 per overconfidence marker
+-5 per clear uncertainty marker
+-4 per acknowledged limitation
+-3 per conditional language
+
+RULES:
+- Return empty arrays when no signals found. Do NOT fabricate.
+- confidence per finding is 0-100 integer.
+- text must be a short verbatim excerpt under 20 words.
+- Return ONLY valid JSON. No prose. No markdown fences.
+
+Schema:
+{
+  "risk_score": number,
+  "risk_summary": string,
+  "hallucination_signals": {
+    "unsupported_claims": [{ "text": string, "reason": string, "confidence": number }],
+    "fabricated_specificity": [{ "text": string, "reason": string, "confidence": number }],
+    "fake_citation_patterns": [{ "text": string, "reason": string, "confidence": number }],
+    "overconfidence_markers": [{ "text": string, "reason": string, "confidence": number }],
+    "logical_inconsistencies": [{ "text": string, "reason": string, "confidence": number }]
+  },
+  "verification_suggestions": string[]
+}`;
+
+const p2State = { running: false };
+const p2$ = id => document.getElementById(id);
+
+function p2SetLoading(on, label = 'analyzing response structure') {
+  p2$('p2-loading').style.display = on ? 'block' : 'none';
+  p2$('p2-analyze-btn').disabled = on;
+  p2$('p2-load-label').textContent = label;
+  p2State.running = on;
+}
+
+function p2ClearError() {
+  p2$('p2-error-msg').style.display = 'none';
+  p2$('p2-error-msg').textContent = '';
+}
+
+function p2ShowError(msg) {
+  p2$('p2-error-msg').textContent = `⚠  ${msg}`;
+  p2$('p2-error-msg').style.display = 'block';
+}
+
+function p2ClearResults() {
+  p2$('p2-results').style.display = 'none';
+  p2$('p2-results').innerHTML = '';
+}
+
+async function p2RunAnalysis() {
+  const responseText = p2$('response-input').value.trim();
+  if (!responseText) { p2ShowError('Paste an AI response to analyze.'); return; }
+  if (responseText.length < 20) { p2ShowError('Response too short to analyze meaningfully.'); return; }
+  if (p2State.running) { return; }
+
+  p2SetLoading(true);
+  p2ClearError();
+  p2ClearResults();
+
+  try {
+    const analysis = await callGemini(P2_SYSTEM_PROMPT, `Analyze this AI-generated response for hallucination risk:\n\n${responseText}`);
+    p2RenderResults(analysis);
+  } catch (err) {
+    p2ShowError(err.message);
+  } finally {
+    p2SetLoading(false);
+  }
+}
+
+function riskColor(score) {
+  if (score >= 75) return '#ff3131';
+  if (score >= 55) return '#ff7a00';
+  if (score >= 35) return '#f5c542';
+  if (score >= 15) return '#7bff57';
+  return '#c8ff00';
+}
+
+function riskLabel(score) {
+  if (score >= 75) return 'CRITICAL';
+  if (score >= 55) return 'HIGH';
+  if (score >= 35) return 'MODERATE';
+  if (score >= 15) return 'LOW';
+  return 'MINIMAL';
+}
+
+function p2RenderResults(a) {
+  const root = p2$('p2-results');
+  root.innerHTML = '';
+  const score = Math.max(0, Math.min(100, a.risk_score ?? 0));
+  const color = riskColor(score);
+  const label = riskLabel(score);
+  const sigs = a.hallucination_signals ?? {};
+
+  root.append(
+    el('div', 'results-label', 'HALLUCINATION RISK REPORT'),
+    p2RenderRiskBanner(score, color, label, a.risk_summary ?? ''),
+    el('div', 'results-label', 'SIGNALS DETECTED'),
+    p2RenderSignalsGrid(sigs),
+    el('div', 'results-label', 'VERIFICATION SUGGESTIONS'),
+    p2RenderVerificationSuggestions(a.verification_suggestions ?? []),
+    p2RenderFooterDisclaimer(),
+  );
+
+  p2$('p2-results').style.display = 'block';
+  root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function p2RenderRiskBanner(score, color, label, summary) {
+  const wrap = el('div', 'risk-banner');
+  wrap.style.borderColor = color + '44';
+
+  const donutCol = el('div', 'score-donut-col');
+  donutCol.append(el('div', 'score-donut-label', 'Risk Score'), buildDonut(score, color));
+
+  const riskCol = el('div', 'health-score-col');
+  const tiny = el('div', 'h-tiny', 'Risk Level');
+  const word = el('div', 'h-word', label);
+  word.style.color = color;
+  riskCol.append(tiny, word);
+
+  const detailCol = el('div', 'health-detail-col');
+  detailCol.append(el('div', 'h-rationale', summary));
+
+  wrap.append(donutCol, riskCol, detailCol);
+  return wrap;
+}
+
+function p2RenderSignalsGrid(sigs) {
+  const grid = el('div', 'findings-2col');
+  const categories = [
+    { key: 'unsupported_claims', label: 'Unsupported Claims', color: '#ff3131' },
+    { key: 'fabricated_specificity', label: 'Fabricated Specificity', color: '#ff7a00' },
+    { key: 'fake_citation_patterns', label: 'Fake Citation Patterns', color: '#f5c542' },
+    { key: 'overconfidence_markers', label: 'Overconfidence Markers', color: '#7c6aff' },
+    { key: 'logical_inconsistencies', label: 'Logical Inconsistencies', color: '#00bbff' },
+  ];
+  for (const { key, label, color } of categories) {
+    grid.appendChild(p2RenderSignalCard(label, color, sigs[key] ?? []));
+  }
+  return grid;
+}
+
+function p2RenderSignalCard(label, color, items) {
+  const card = el('div', 'fcard');
+  const head = el('div', 'fcard-head');
+  const title = el('div', 'fcard-title');
+  const stripe = el('span', 'fcard-stripe');
+  stripe.style.background = color;
+  title.append(stripe, document.createTextNode(label));
+  head.append(title, el('span', 'fcount', String(items.length)));
+  card.appendChild(head);
+
+  if (items.length === 0) {
+    card.appendChild(el('div', 'fempty', 'no signals detected'));
+  } else {
+    items.forEach(s => {
+      const item = el('div', 'fitem');
+      const wrap = el('div', 'ftext');
+      const excerpt = el('div', '');
+      excerpt.style.cssText = 'font-family:IBM Plex Mono,monospace;font-size:11px;color:#888;margin-bottom:4px;font-style:italic;';
+      excerpt.textContent = `"${s.text ?? ''}"`;
+      wrap.append(excerpt, el('div', 'srationale', s.reason ?? ''));
+      const conf = s.confidence ?? 0;
+      const tier = conf >= 70 ? 'conf-hi' : conf >= 40 ? 'conf-mid' : 'conf-lo';
+      item.append(wrap, el('span', `ctag ${tier}`, `${conf}%`));
+      card.appendChild(item);
+    });
+  }
+  return card;
+}
+
+function p2RenderVerificationSuggestions(suggestions) {
+  const block = el('div', 'vsug-block');
+  const head = el('div', 'vsug-head');
+  head.append(el('div', 'vsug-title', 'How to Verify'), el('span', 'fcount', String(suggestions.length)));
+  block.appendChild(head);
+
+  if (suggestions.length === 0) {
+    block.appendChild(el('div', 'fempty', 'no verification suggestions'));
+  } else {
+    suggestions.forEach((s, i) => {
+      const item = el('div', 'sitem');
+      const content = el('div', 'scontent');
+      content.appendChild(el('div', 'srationale', s));
+      item.append(el('span', 'spri low', String(i + 1)), content);
+      block.appendChild(item);
+    });
+  }
+  return block;
+}
+
+function p2RenderFooterDisclaimer() {
+  const d = el('div', 'disclaimer');
+  d.innerHTML = '<b>structural analysis only — not fact-checking.</b> a low risk score does not mean the response is accurate. a high risk score does not mean it is wrong. always verify important claims with primary sources.';
+  return d;
+}
+
+// Wire Phase 2 listeners — script is at bottom of <body>, DOM is already parsed
+document.getElementById('p2-analyze-btn').addEventListener('click', () => p2RunAnalysis());
+document.getElementById('response-input').addEventListener('input', () => {
+  const n = document.getElementById('response-input').value.length;
+  document.getElementById('p2-char-count').textContent = `${n.toLocaleString()} chars`;
+});
