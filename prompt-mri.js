@@ -32,7 +32,14 @@ if (!KEYS || !KEYS.gemini || KEYS.gemini === 'YOUR_GEMINI_KEY_HERE') {
 
 // ─── Config ──────────────────────────────────────────────────────
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
+const MODELS = [
+  'gemini-3-flash-preview',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+  'gemini-1.5-pro'
+];
+
+const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 // ─── State machine ───────────────────────────────────────────────
 // Single source of truth. Never read DOM to determine state.
@@ -152,55 +159,68 @@ document.getElementById('prompt-input').addEventListener('input', () => {
   $('char-count').textContent = `${n.toLocaleString()} chars`;
 });
 
-// ─── API: Anthropic ───────────────────────────────────────────────
+// ─── API: Gemini ───────────────────────────────────────────────
 
-async function callGemini(systemPrompt, userMessage, retries = 3, delay = 1000) {
-  const url = `${GEMINI_URL}?key=${KEYS.gemini}`;
+async function callGemini(systemPrompt, userMessage, retries = 2, delay = 1000) {
+  // Try each model in order
+  for (const model of MODELS) {
+    const url = `${BASE_URL}/${model}:generateContent?key=${KEYS.gemini}`;
 
-  for (let i = 0; i < retries; i++) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: `${systemPrompt}\n\n${userMessage}` }]
-          }],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 3000,
-          },
-        }),
-      });
+    // For each model, try specified number of retries
+    for (let i = 0; i < retries; i++) {
+      try {
+        console.log(`Attempting Gemini with model: ${model} (Try ${i + 1})`);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: `${systemPrompt}\n\n${userMessage}` }]
+            }],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 3000,
+            },
+          }),
+        });
 
-      if (res.status === 429 || res.status === 503) {
-        // High demand or rate limit — wait and retry
+        if (res.status === 429 || res.status === 503) {
+          // Rate limited or busy
+          if (i < retries - 1) {
+            console.warn(`Gemini busy/limited (HTTP ${res.status}). Retrying ${model} in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          } else {
+            // Out of retries for THIS model, fall back to NEXT model
+            console.warn(`Model ${model} failed after retries. Moving to next fallback.`);
+            break;
+          }
+        }
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          const msg = err?.error?.message || `HTTP ${res.status}`;
+          // If it's a fatal error (like model not found), fall back immediately
+          console.error(`Model ${model} error: ${msg}. Trying next fallback.`);
+          break;
+        }
+
+        const data = await res.json();
+        const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+        return parseJSON(raw);
+
+      } catch (err) {
+        console.warn(`Connection error on ${model}: ${err.message}.`);
         if (i < retries - 1) {
-          console.warn(`Gemini busy (HTTP ${res.status}). Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
-          delay *= 2; // Exponential backoff
           continue;
         }
+        break; // Next model
       }
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        const msg = err?.error?.message || `HTTP ${res.status}`;
-        throw new Error(`Gemini error: ${msg}`);
-      }
-
-      const data = await res.json();
-      const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-      return parseJSON(raw);
-
-    } catch (err) {
-      if (i === retries - 1) throw err;
-      // For network errors, we also retry
-      console.warn(`Connection error: ${err.message}. Retrying...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      delay *= 2;
     }
   }
+
+  throw new Error('All Gemini models failed or reached rate limits. Please try again in 10-15 seconds.');
 }
 
 // ─── JSON parser (strips fences) ─────────────────────────────────
