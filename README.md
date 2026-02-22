@@ -1,5 +1,8 @@
 # PROMPT MRI
 **not an optimizer. a diagnostic.**
+<br>
+![Prompt MRI Logo](./Prompt%20MRI.png)
+
 
 ---
 
