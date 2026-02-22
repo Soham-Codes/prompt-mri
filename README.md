@@ -1,6 +1,16 @@
 # PROMPT MRI
 **not an optimizer. a diagnostic.**
 
+---
+
+**Product Name:** Prompt MRI  
+**Team Name:** Out-of Tokens  
+**Members:** Soham Joshi  
+
+*The Project was created as part of the Hack AI Hackathon 2026*
+
+---
+
 Prompt MRI is a forensic diagnostic engine for the human-AI interaction loop. It deconstructs the "black box" of LLM behavior by scanning your prompts for structural flaws—ambiguities, hidden assumptions, and missing context—before they lead to failure. For AI-generated output, it applies a second forensic layer to detect the structural signals of hallucination, such as unsupported specificity and overconfident phrasing. It doesn't just optimize; it provides a forensic scan of why your AI interaction is succeeding or failing.
 
 ---
